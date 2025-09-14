@@ -1,7 +1,7 @@
 class GiftRegistry {
     constructor() {
         // TYLKO URL do Google Apps Script - wszystkie inne dane są bezpieczne w Apps Script
-        this.SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlgaNlEDCChO7K8gccAY8ZJ32VTi2fsR9ATbVCdxjcGsCzxcexTQ5TMbJ5-GphfZm8/exec';
+        this.SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvOSqNEWDaGBxuxXZOzp_Q7RrFaG7wyznnhKujSC_FwX-vo5HzwN5CCHJiNYUWa9bGDg/exec';
 
         this.gifts = [];
         this.selectedGift = null;

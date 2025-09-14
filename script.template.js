@@ -3,6 +3,7 @@ class GiftRegistry {
         this.SCRIPT_URL = '{{APPS_SCRIPT_URL}}';
         this.gifts = [];
         this.selectedGift = null;
+        this.lastDataVersion = null; // Dodaj tracking wersji
 
         console.log('🚀 Inicjalizacja GiftRegistry...');
         console.log('🔗 Apps Script URL:', this.SCRIPT_URL);
@@ -15,18 +16,55 @@ class GiftRegistry {
         this.setupEventListeners();
     }
 
+    // Formatowanie cen w złotówkach
+    formatPrice(price) {
+        if (!price) return '';
+
+        // Usuń wszelkie nie-numeryczne znaki oprócz kropek i przecinków
+        const numericPrice = price.toString().replace(/[^\d.,]/g, '');
+
+        // Konwertuj na liczbę
+        const number = parseFloat(numericPrice.replace(',', '.'));
+
+        if (isNaN(number)) {
+            return price + ' zł'; // Jeśli nie można sparsować, dodaj zł na końcu
+        }
+
+        // Formatuj jako polska waluta
+        return new Intl.NumberFormat('pl-PL', {
+            style: 'currency',
+            currency: 'PLN',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        }).format(number);
+    }
+
+    async checkForUpdates() {
+        try {
+            const url = `${this.SCRIPT_URL}?action=checkVersion&t=${Date.now()}`;
+            const response = await fetch(url, { method: 'GET' });
+            const data = await response.json();
+
+            if (data.success && data.version) {
+                // Jeśli wersja się zmieniła, przeładuj dane
+                if (this.lastDataVersion && this.lastDataVersion !== data.version) {
+                    console.log('🔄 Wykryto zmiany w arkuszu, odświeżanie danych...');
+                    await this.loadGifts();
+                }
+                this.lastDataVersion = data.version;
+            }
+        } catch (error) {
+            console.warn('Błąd sprawdzania aktualizacji:', error);
+        }
+    }
+
     async loadGifts() {
         console.log('📥 Ładowanie danych przez Google Apps Script...');
 
         try {
-            // FormData zamiast JSON - omija preflight request
-            const formData = new FormData();
-            formData.append('action', 'getGifts');
+            const url = `${this.SCRIPT_URL}?action=getGifts&t=${Date.now()}`;
 
-            const response = await fetch(this.SCRIPT_URL, {
-                method: 'POST',
-                body: formData  // BEZ Content-Type header!
-            });
+            const response = await fetch(url, { method: 'GET' });
 
             console.log('📡 Odpowiedź serwera:', response.status, response.statusText);
 
@@ -42,6 +80,7 @@ class GiftRegistry {
             if (data.success && data.gifts && data.gifts.length > 0) {
                 console.log(`✅ Znaleziono ${data.gifts.length} prezentów`);
                 this.gifts = data.gifts;
+                this.lastDataVersion = data.version; // Zapisz wersję danych
                 this.renderGifts();
             } else if (data.error) {
                 throw new Error(data.error);
@@ -84,6 +123,7 @@ class GiftRegistry {
 
         sortedGifts.forEach(gift => {
             const isReserved = gift.status.toLowerCase() === 'zarezerwowane';
+            const formattedPrice = this.formatPrice(gift.price); // Formatuj cenę
 
             const giftCard = `
                 <div class="col-lg-4 col-md-6 mb-4">
@@ -103,7 +143,7 @@ class GiftRegistry {
                         <div class="card-body d-flex flex-column">
                             <h5 class="card-title">${gift.name}</h5>
                             <div class="mb-2">
-                                <span class="badge price-tag px-3 py-2">${gift.price}</span>
+                                <span class="badge price-tag px-3 py-2">${formattedPrice}</span>
                             </div>
                             <div class="mt-auto">
                                 ${gift.link ? `<a href="${gift.link}" target="_blank" class="btn btn-outline-primary btn-sm mb-2 w-100">
@@ -190,7 +230,7 @@ class GiftRegistry {
             <div class="card">
                 <div class="card-body text-center">
                     <h5 class="card-title">${this.selectedGift.name}</h5>
-                    <span class="badge price-tag px-3 py-2">${this.selectedGift.price}</span>
+                    <span class="badge price-tag px-3 py-2">${this.formatPrice(this.selectedGift.price)}</span>
                 </div>
             </div>
         `;
@@ -204,10 +244,11 @@ class GiftRegistry {
             this.confirmReservation();
         });
 
+        // Sprawdzaj aktualizacje co 30 sekund (zamiast ciągłego ładowania)
         setInterval(() => {
-            console.log('🔄 Automatyczne odświeżanie danych...');
-            this.loadGifts();
-        }, 15000);
+            console.log('🔍 Sprawdzanie aktualizacji arkusza...');
+            this.checkForUpdates();
+        }, 30000); // 30 sekund
     }
 
     async confirmReservation() {
@@ -219,16 +260,9 @@ class GiftRegistry {
         confirmBtn.disabled = true;
 
         try {
-            // FormData dla rezerwacji
-            const formData = new FormData();
-            formData.append('action', 'updateReservation');
-            formData.append('rowIndex', this.selectedGift.rowIndex);
-            formData.append('status', 'zarezerwowane');
+            const url = `${this.SCRIPT_URL}?action=updateReservation&rowIndex=${this.selectedGift.rowIndex}&status=zarezerwowane&t=${Date.now()}`;
 
-            const response = await fetch(this.SCRIPT_URL, {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetch(url, { method: 'GET' });
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -240,6 +274,8 @@ class GiftRegistry {
                 const modal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
                 modal.hide();
                 this.showSuccessMessage();
+
+                // Odśwież dane po rezerwacji (arkusz się zmienił)
                 setTimeout(() => this.loadGifts(), 1000);
             } else {
                 throw new Error(data.error || 'Nieznany błąd serwera');

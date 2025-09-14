@@ -1,8 +1,6 @@
 class GiftRegistry {
     constructor() {
-        // TYLKO URL do Google Apps Script - wszystkie inne dane są bezpieczne w Apps Script
         this.SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbuZQE5432dqhrkCbKo6oZn6RmlkhwFgLStyFFSchKMwH9AWFcF9xF8U9M5Np92D33aA/exec';
-
         this.gifts = [];
         this.selectedGift = null;
 
@@ -21,14 +19,13 @@ class GiftRegistry {
         console.log('📥 Ładowanie danych przez Google Apps Script...');
 
         try {
+            // FormData zamiast JSON - omija preflight request
+            const formData = new FormData();
+            formData.append('action', 'getGifts');
+
             const response = await fetch(this.SCRIPT_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'getGifts'
-                })
+                body: formData  // BEZ Content-Type header!
             });
 
             console.log('📡 Odpowiedź serwera:', response.status, response.statusText);
@@ -54,16 +51,7 @@ class GiftRegistry {
             }
         } catch (error) {
             console.error('💥 Błąd podczas ładowania danych:', error);
-
-            if (error.message.includes('CORS')) {
-                this.showError('Błąd CORS. Sprawdź konfigurację Google Apps Script.');
-            } else if (error.message.includes('403')) {
-                this.showError('Brak uprawnień. Sprawdź ustawienia Google Apps Script.');
-            } else if (error.message.includes('404')) {
-                this.showError('Nie znaleziono Google Apps Script. Sprawdź URL.');
-            } else {
-                this.showError(`Błąd ładowania danych: ${error.message}`);
-            }
+            this.showError(`Błąd ładowania danych: ${error.message}`);
         } finally {
             document.getElementById('loading').style.display = 'none';
         }
@@ -78,7 +66,7 @@ class GiftRegistry {
                 <div class="col-12">
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i>
-                        Brak prezentów do wyświetlenia. Sprawdź czy arkusz zawiera dane.
+                        Brak prezentów do wyświetlenia.
                     </div>
                 </div>
             `;
@@ -88,7 +76,6 @@ class GiftRegistry {
 
         container.innerHTML = '';
 
-        // Sortuj: dostępne najpierw
         const sortedGifts = [...this.gifts].sort((a, b) => {
             const aReserved = a.status.toLowerCase() === 'zarezerwowane';
             const bReserved = b.status.toLowerCase() === 'zarezerwowane';
@@ -179,7 +166,6 @@ class GiftRegistry {
             const container = document.getElementById('gifts-container');
             container.insertAdjacentHTML('beforebegin', statsHtml);
         } else {
-            // Zaktualizuj istniejące statystyki
             const statsContainer = document.getElementById('stats-container');
             statsContainer.querySelector('.text-primary').textContent = total;
             statsContainer.querySelector('.text-success').textContent = available;
@@ -218,7 +204,6 @@ class GiftRegistry {
             this.confirmReservation();
         });
 
-        // Automatyczne odświeżanie co 15 sekund
         setInterval(() => {
             console.log('🔄 Automatyczne odświeżanie danych...');
             this.loadGifts();
@@ -230,22 +215,19 @@ class GiftRegistry {
         const confirmBtn = document.getElementById('confirm-reservation');
         const originalText = confirmBtn.innerHTML;
 
-        // Pokaż spinner
         confirmBtn.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i>Rezerwuję...';
         confirmBtn.disabled = true;
 
         try {
-            // Wysłanie żądania rezerwacji do Google Apps Script
+            // FormData dla rezerwacji
+            const formData = new FormData();
+            formData.append('action', 'updateReservation');
+            formData.append('rowIndex', this.selectedGift.rowIndex);
+            formData.append('status', 'zarezerwowane');
+
             const response = await fetch(this.SCRIPT_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'updateReservation',
-                    rowIndex: this.selectedGift.rowIndex,
-                    status: 'zarezerwowane'
-                })
+                body: formData
             });
 
             if (!response.ok) {
@@ -255,17 +237,10 @@ class GiftRegistry {
             const data = await response.json();
 
             if (data.success) {
-                // Zamknij modal
                 const modal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
                 modal.hide();
-
-                // Pokaż komunikat sukcesu
                 this.showSuccessMessage();
-
-                // Odśwież listę po 1 sekundzie
-                setTimeout(() => {
-                    this.loadGifts();
-                }, 1000);
+                setTimeout(() => this.loadGifts(), 1000);
             } else {
                 throw new Error(data.error || 'Nieznany błąd serwera');
             }
@@ -274,7 +249,6 @@ class GiftRegistry {
             console.error('💥 Błąd podczas rezerwacji:', error);
             alert('Nie udało się zarezerwować prezentu. Spróbuj ponownie.');
         } finally {
-            // Przywróć przycisk
             confirmBtn.innerHTML = originalText;
             confirmBtn.disabled = false;
         }
@@ -283,10 +257,7 @@ class GiftRegistry {
     showSuccessMessage() {
         const alert = document.getElementById('success-alert');
         alert.style.display = 'block';
-
-        setTimeout(() => {
-            alert.style.display = 'none';
-        }, 4000);
+        setTimeout(() => alert.style.display = 'none', 4000);
     }
 
     showError(message) {
@@ -302,7 +273,6 @@ class GiftRegistry {
     }
 }
 
-// Inicjalizacja aplikacji
 document.addEventListener('DOMContentLoaded', () => {
     new GiftRegistry();
 });

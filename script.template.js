@@ -1,17 +1,13 @@
 class GiftRegistry {
     constructor() {
-        // Wszystkie wrażliwe dane jako placeholders
-        this.API_KEY = '{{GOOGLE_API_KEY}}';
-        this.SPREADSHEET_ID = '{{SPREADSHEET_ID}}';
+        // TYLKO URL do Google Apps Script - wszystkie inne dane są bezpieczne w Apps Script
         this.SCRIPT_URL = '{{APPS_SCRIPT_URL}}';
-        this.RANGE = 'A2:E1000';
 
         this.gifts = [];
         this.selectedGift = null;
 
         console.log('🚀 Inicjalizacja GiftRegistry...');
-        console.log('📋 Spreadsheet ID:', this.SPREADSHEET_ID);
-        console.log('🔑 API Key (pierwsze 10 znaków):', this.API_KEY.substring(0, 10) + '...');
+        console.log('🔗 Apps Script URL:', this.SCRIPT_URL);
 
         this.init();
     }
@@ -22,13 +18,19 @@ class GiftRegistry {
     }
 
     async loadGifts() {
-        console.log('📥 Ładowanie danych z Google Sheets...');
+        console.log('📥 Ładowanie danych przez Google Apps Script...');
 
         try {
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.SPREADSHEET_ID}/values/${this.RANGE}?key=${this.API_KEY}`;
-            console.log('🌐 URL zapytania:', url);
+            const response = await fetch(this.SCRIPT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'getGifts'
+                })
+            });
 
-            const response = await fetch(url);
             console.log('📡 Odpowiedź serwera:', response.status, response.statusText);
 
             if (!response.ok) {
@@ -40,34 +42,25 @@ class GiftRegistry {
             const data = await response.json();
             console.log('📊 Otrzymane dane:', data);
 
-            if (data.values && data.values.length > 0) {
-                console.log(`✅ Znaleziono ${data.values.length} wierszy danych`);
-
-                this.gifts = data.values.map((row, index) => ({
-                    id: index,
-                    name: row[0] || '',
-                    link: row[1] || '',
-                    price: row[2] || '',
-                    image: row[3] || 'https://via.placeholder.com/300x200?text=Brak+zdjęcia',
-                    status: row[4] || 'dostępne',
-                    rowIndex: index + 2
-                })).filter(gift => gift.name.trim() !== '');
-
-                console.log('🎁 Przetworzonych prezentów:', this.gifts.length);
+            if (data.success && data.gifts && data.gifts.length > 0) {
+                console.log(`✅ Znaleziono ${data.gifts.length} prezentów`);
+                this.gifts = data.gifts;
                 this.renderGifts();
+            } else if (data.error) {
+                throw new Error(data.error);
             } else {
-                console.warn('⚠️ Brak danych w arkuszu lub pusty arkusz');
-                this.showError('Arkusz jest pusty lub nie zawiera danych w zakresie A2:E1000');
+                console.warn('⚠️ Brak prezentów w odpowiedzi');
+                this.showError('Brak prezentów do wyświetlenia. Sprawdź czy arkusz zawiera dane.');
             }
         } catch (error) {
             console.error('💥 Błąd podczas ładowania danych:', error);
 
             if (error.message.includes('CORS')) {
-                this.showError('Błąd CORS. Sprawdź konfigurację API Key i uprawnienia arkusza.');
+                this.showError('Błąd CORS. Sprawdź konfigurację Google Apps Script.');
             } else if (error.message.includes('403')) {
-                this.showError('Brak uprawnień. Sprawdź API Key i czy arkusz jest publiczny.');
+                this.showError('Brak uprawnień. Sprawdź ustawienia Google Apps Script.');
             } else if (error.message.includes('404')) {
-                this.showError('Nie znaleziono arkusza. Sprawdź ID arkusza.');
+                this.showError('Nie znaleziono Google Apps Script. Sprawdź URL.');
             } else {
                 this.showError(`Błąd ładowania danych: ${error.message}`);
             }
@@ -225,6 +218,7 @@ class GiftRegistry {
             this.confirmReservation();
         });
 
+        // Automatyczne odświeżanie co 15 sekund
         setInterval(() => {
             console.log('🔄 Automatyczne odświeżanie danych...');
             this.loadGifts();
@@ -241,7 +235,7 @@ class GiftRegistry {
         confirmBtn.disabled = true;
 
         try {
-            // Aktualizacja statusu przez Google Apps Script
+            // Wysłanie żądania rezerwacji do Google Apps Script
             const response = await fetch(this.SCRIPT_URL, {
                 method: 'POST',
                 headers: {
@@ -255,23 +249,29 @@ class GiftRegistry {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to update reservation');
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
-            // Zamknij modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
-            modal.hide();
+            const data = await response.json();
 
-            // Pokaż komunikat sukcesu
-            this.showSuccessMessage();
+            if (data.success) {
+                // Zamknij modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
+                modal.hide();
 
-            // Odśwież listę
-            setTimeout(() => {
-                this.loadGifts();
-            }, 1000);
+                // Pokaż komunikat sukcesu
+                this.showSuccessMessage();
+
+                // Odśwież listę po 1 sekundzie
+                setTimeout(() => {
+                    this.loadGifts();
+                }, 1000);
+            } else {
+                throw new Error(data.error || 'Nieznany błąd serwera');
+            }
 
         } catch (error) {
-            console.error('Błąd podczas rezerwacji:', error);
+            console.error('💥 Błąd podczas rezerwacji:', error);
             alert('Nie udało się zarezerwować prezentu. Spróbuj ponownie.');
         } finally {
             // Przywróć przycisk

@@ -139,10 +139,9 @@ class GiftRegistry {
                                     </span>
                                 </div>
                             ` : ''}
-                        </div>
                         <div class="card-body d-flex flex-column">
-                            <h5 class="card-title">${gift.name}</h5>
-                            <div class="mb-2">
+                            <div class="price-container">
+                                <h5 class="card-title gift-title">${gift.name}</h5>
                                 <span class="badge price-tag px-3 py-2">${formattedPrice}</span>
                             </div>
                             <div class="mt-auto">
@@ -158,6 +157,7 @@ class GiftRegistry {
                                     </button>`
                 }
                             </div>
+                        </div>
                         </div>
                     </div>
                 </div>

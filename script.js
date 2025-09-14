@@ -1,6 +1,6 @@
 class GiftRegistry {
     constructor() {
-        this.SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbuZQE5432dqhrkCbKo6oZn6RmlkhwFgLStyFFSchKMwH9AWFcF9xF8U9M5Np92D33aA/exec';
+        this.SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyrIgYbu_GiDE5JJ0HmBVArvTbyRNWb0hfke5tN4AkfL0JyFw2LxQpN2UGWUQMTxZS8dg/exec';
         this.gifts = [];
         this.selectedGift = null;
 

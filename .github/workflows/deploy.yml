@@ -1,37 +1,31 @@
 name: Build and Deploy to GitHub Pages
-
-on:
+'on':
   push:
-    branches: [ main ]
+    branches:
+    - main
   pull_request:
-    branches: [ main ]
-
+    branches:
+    - main
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # To ma kluczowe znaczenie!
+      contents: write
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-
     - name: Replace placeholders in template
-      run: |
-        sed -e "s/{{GOOGLE_API_KEY}}/${{ secrets.GOOGLE_API_KEY }}/g" \
-            -e "s/{{SPREADSHEET_ID}}/${{ secrets.SPREADSHEET_ID }}/g" \
-            -e "s/{{APPS_SCRIPT_URL}}/${{ secrets.APPS_SCRIPT_URL }}/g" \
-            script.template.js > script.js
-        rm script.template.js
-
+      run: sed -e 's/{{GOOGLE_API_KEY}}/${{ secrets.GOOGLE_API_KEY }}/g' -e 's/{{SPREADSHEET_ID}}/${{
+        secrets.SPREADSHEET_ID }}/g' -e 's/{{APPS_SCRIPT_URL}}/${{ secrets.APPS_SCRIPT_URL
+        }}/g' script.template.js > script.js && rm script.template.js
     - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v4  # Zaktualizowane do v4
+      uses: peaceiris/actions-gh-pages@v4
       if: github.ref == 'refs/heads/main'
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./
-        exclude_assets: '.github'
+        exclude_assets: .github

@@ -5,6 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -22,9 +23,7 @@ jobs:
 
     - name: Replace placeholders in template
       run: |
-        sed -e 's|{{GOOGLE_API_KEY}}|${{ secrets.GOOGLE_API_KEY }}|g' \
-            -e 's|{{SPREADSHEET_ID}}|${{ secrets.SPREADSHEET_ID }}|g' \
-            -e 's|{{APPS_SCRIPT_URL}}|${{ secrets.APPS_SCRIPT_URL }}|g' \
+        sed -e 's|{{APPS_SCRIPT_URL}}|${{ secrets.APPS_SCRIPT_URL }}|g' \
             script.template.js > script.js
         rm script.template.js
 

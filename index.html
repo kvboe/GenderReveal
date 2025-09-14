@@ -35,6 +35,17 @@
             background: linear-gradient(45deg, #6c757d, #495057);
             color: white;
         }
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        main {
+            flex: 1;
+        }
+        footer {
+            margin-top: auto;
+        }
     </style>
 </head>
 <body>
@@ -48,7 +59,7 @@
     </section>
 
     <!-- Main Content -->
-    <div class="container my-5">
+    <main class="container my-5">
         <div class="row mb-4">
             <div class="col-12">
                 <div class="alert alert-info">
@@ -71,7 +82,14 @@
         <div id="gifts-container" class="row" style="display: none;">
             <!-- Gifts will be loaded here -->
         </div>
-    </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-light text-center py-3 mt-5">
+        <div class="container">
+            <small class="text-muted">Proudly made with ❤️ and AI by kvboe</small>
+        </div>
+    </footer>
 
     <!-- Confirmation Modal -->
     <div class="modal fade" id="confirmationModal" tabindex="-1">

@@ -25,9 +25,17 @@
 }
 
 .hero-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #1b3191 0%, #52b9e9 100%);
     color: white;
-    padding: 60px 0;
+    padding: 30px;
+    border-radius: 66px;
+    overflow: hidden;
+    margin: 20px auto;
+    /* center horizontally */
+    width: calc(100% - 40px);
+    /* leave 20px gap on each side on small screens */
+    max-width: 1200px;
+    /* constrain on large screens so it doesn't touch edges */
 }
 
 .reserved-badge {
